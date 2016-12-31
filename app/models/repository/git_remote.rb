@@ -73,14 +73,6 @@ class Repository::GitRemote < Repository::Git
     p = parse(attributes["extra_info"]["extra_clone_url"])
     self.identifier = p[:identifier] if identifier.empty?
 
-    url_prefix = PATH_PREFIX
-    unless Setting.plugin_redmine_git_remote["git_local_path_default"].blank?
-      url_prefix = Setting.plugin_redmine_git_remote["git_local_path_default"]
-      if !url_prefix.end_with?("/") then
-        url_prefix = url_prefix + "/"
-      end  
-    end
-
     self.url = url_prefix + p[:path] if url.empty?
 
     err = ensure_possibly_empty_clone_exists
@@ -90,8 +82,8 @@ class Repository::GitRemote < Repository::Git
   ## Deletes repository directory if it's inside plugin directory (i.e. belongs to plugin)
   ## and this repo is not used by other repositories
   def remove_unused_repos
-    inside_plugin_bundle = self.clone_path.include? PATH_PREFIX
-    nobody_else_need_it = Repository.where(url: self.relative_url).count <= 1
+    inside_plugin_bundle = self.clone_path.include? url_prefix
+    nobody_else_need_it = Repository.where(url: self.url).count <= 1
     if inside_plugin_bundle && nobody_else_need_it
       system "rm -Rf #{self.clone_path}"
     end
@@ -187,4 +179,19 @@ class Repository::GitRemote < Repository::Git
       Kernel::open(ssh_known_hosts, 'a') { |f| f.puts out}
     end
   end
+
+  private
+  def url_prefix
+    url_prefix = PATH_PREFIX
+    unless Setting.plugin_redmine_git_remote["git_local_path_default"].blank?
+      url_prefix = Setting.plugin_redmine_git_remote["git_local_path_default"]
+      if !url_prefix.end_with?("/") then
+        url_prefix = url_prefix + "/"
+      end
+    end
+
+    url_prefix
+  end
+
+
 end
